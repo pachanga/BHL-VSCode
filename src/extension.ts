@@ -12,44 +12,60 @@ let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
   const config = workspace.getConfiguration('bhl');
+
+  // IMPORTANT: treat executablePath as a full path, do NOT split on spaces
   const serverCommand = config.get<string>('executablePath') || 'bhl';
   const logFile = config.get<string>('logFile') || '';
   const forceRebuild = config.get<boolean>('forceRebuild') ?? true;
 
-  const parts = serverCommand.trim().split(/\s+/);
-  const command = parts[0];
-  const args = [...parts.slice(1), 'lsp'];
+  const command = serverCommand;
+  const args: string[] = ['lsp'];
+
   if (logFile) {
     args.push(`--log-file=${logFile}`);
   }
 
-  const spawnOptions = forceRebuild
-    ? { env: { ...process.env, BHL_REBUILD: '1', BHL_SILENT: '1' } }
-    : undefined;
+  // Detect Windows batch scripts
+  const isWindowsBatch =
+    process.platform === 'win32' && /\.(bat|cmd)$/i.test(command);
 
   const serverOptions: ServerOptions = {
     command,
     args,
-    ...(spawnOptions ? { options: spawnOptions } : {}),
-  };
-
-  const clientOptions: LanguageClientOptions = {
-    documentSelector: [
-      { scheme: 'file', language: 'bhl' }
-    ],
-    synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/*.bhl')
+    options: {
+      env: {
+        ...process.env,
+        ...(forceRebuild
+          ? { BHL_REBUILD: '1', BHL_SILENT: '1' }
+          : {}),
+      },
+      // Required for .bat/.cmd on Windows
+      ...(isWindowsBatch ? { shell: true } : {}),
     },
   };
 
-  client = new LanguageClient('bhl', 'BHL Language Server', serverOptions, clientOptions);
+  const clientOptions: LanguageClientOptions = {
+    documentSelector: [{ scheme: 'file', language: 'bhl' }],
+    synchronize: {
+      fileEvents: workspace.createFileSystemWatcher('**/*.bhl'),
+    },
+  };
+
+  client = new LanguageClient(
+    'bhl',
+    'BHL Language Server',
+    serverOptions,
+    clientOptions
+  );
+
   client.start();
 
   context.subscriptions.push(
-    client/*,
-    commands.registerCommand('bhl.reload', () => {
-      client.sendRequest('workspace/executeCommand', { command: 'bhl.reload' });
-    })*/
+    client
+    // Uncomment if needed later:
+    // commands.registerCommand('bhl.reload', () => {
+    //   client.sendRequest('workspace/executeCommand', { command: 'bhl.reload' });
+    // })
   );
 }
 
