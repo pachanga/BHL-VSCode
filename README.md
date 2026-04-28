@@ -5,6 +5,7 @@ VSCode extension providing BHL language support via the Language Server Protocol
 ## Requirements
 
 The `bhl` executable must be available — either on your `PATH` or configured explicitly (see below). The extension launches it as `bhl lsp` to start the language server.
+You can also specify a dotnet command to start a bhl.dll, e.g: `dotnet C:\Users\me\bhl\build\bhl\Release\net8.0\bhl.dll`
 
 ## Installation
 
