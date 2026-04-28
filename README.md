@@ -34,7 +34,7 @@ This compiles, packages, and installs the extension in one step. Requires Node.j
 |---|---|---|
 | `bhl.executablePath` | `""` | Path to the `bhl` executable. Falls back to `bhl` on `PATH`. Supports extra arguments (e.g. `/path/to/bhl --some-flag`). |
 | `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
-| `bhl.forceRebuild` | `false` | Force a full project rebuild on startup by setting `BHL_REBUILD=1`. |
+| `bhl.forceRebuild` | `true` | Force a full project rebuild on startup by setting `BHL_REBUILD=1`. |
 
 Settings can be changed in **File → Preferences → Settings** under the **BHL** section, or directly in `settings.json`:
 
