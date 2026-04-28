@@ -1,4 +1,4 @@
-.PHONY: all build package install clean
+.PHONY: all build package install clean hooks
 
 all: package
 
@@ -13,3 +13,6 @@ install: package
 
 clean:
 	rm -rf out/ bhl-*.vsix
+
+hooks:
+	ln -sf ../../.githooks/post-commit .git/hooks/post-commit

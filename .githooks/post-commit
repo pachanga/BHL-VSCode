@@ -1,0 +1,27 @@
+#!/bin/sh
+
+get_version() {
+  git show "$1:package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/'
+}
+
+NEW_VERSION=$(get_version HEAD)
+
+if [ -z "$NEW_VERSION" ]; then
+  exit 0
+fi
+
+OLD_VERSION=$(get_version HEAD~1)
+
+if [ "$NEW_VERSION" = "$OLD_VERSION" ]; then
+  exit 0
+fi
+
+TAG="v$NEW_VERSION"
+
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  echo "[post-commit] Tag $TAG already exists, skipping."
+  exit 0
+fi
+
+git tag "$TAG"
+echo "[post-commit] Version changed to $NEW_VERSION — created tag $TAG"
