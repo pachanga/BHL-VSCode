@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -36,15 +36,15 @@
       },
       {
         "command": "bhl.useRepository",
-        "title": "BHL: Use Internal BHL Repository"
+        "title": "BHL: Use Internal LSP Server"
       },
       {
         "command": "bhl.updateRepository",
-        "title": "BHL: Update Internal BHL Repository"
+        "title": "BHL: Update Internal LSP Server"
       },
       {
         "command": "bhl.removeRepository",
-        "title": "BHL: Remove Internal BHL Repository"
+        "title": "BHL: Remove Internal LSP Server"
       }
     ],
     "semanticTokenScopes": [
