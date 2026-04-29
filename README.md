@@ -20,14 +20,6 @@ You need to have BHL LSP server installed somewhere. For simplicity you just can
 code --install-extension bhl-<version>.vsix
 ```
 
-### Build from source
-
-```sh
-make install
-```
-
-This compiles, packages, and installs the extension in one step. Requires Node.js and `npm`.
-
 ## Configuration
 
 | Setting | Default | Description |
