@@ -4,9 +4,7 @@ VSCode extension providing BHL language support via the Language Server Protocol
 
 ## Requirements
 
-The `bhl` executable must be available — either on your `PATH` or configured explicitly (see below). The extension launches it as `path/to/bhl lsp` to start the language server.
-
-You need to have BHL installed somewhere. For simplicity you just can clone [BHL repository](https://github.com/bitdotgames/BHL) to some directory.
+You need to have BHL installed somewhere. For simplicity you just can clone [BHL repository](https://github.com/bitdotgames/BHL) to some directory. Once extension is setup in VSCode you will be able to configure a path to the bhl script (see below). The extension launches it as `path/to/BHL/bhl lsp` to start the language server.
 
 ## Installation
 
