@@ -4,8 +4,9 @@ VSCode extension providing BHL language support via the Language Server Protocol
 
 ## Requirements
 
-The `bhl` executable must be available — either on your `PATH` or configured explicitly (see below). The extension launches it as `bhl lsp` to start the language server.
-You can also specify a dotnet command to start a bhl.dll, e.g: `dotnet C:\Users\me\bhl\build\bhl\Release\net8.0\bhl.dll`
+The `bhl` executable must be available — either on your `PATH` or configured explicitly (see below). The extension launches it as `path/to/bhl lsp` to start the language server.
+
+You need to have BHL installed somewhere. For simplicity you just can clone [BHL repository](https://github.com/bitdotgames/BHL) to some directory.
 
 ## Installation
 
@@ -33,7 +34,7 @@ This compiles, packages, and installs the extension in one step. Requires Node.j
 
 | Setting | Default | Description |
 |---|---|---|
-| `bhl.executablePath` | `""` | Path to the `bhl` executable. Falls back to `bhl` on `PATH`. Supports extra arguments (e.g. `/path/to/bhl --some-flag`). |
+| `bhl.executablePath` | `""` | Path to the `bhl` executable (On Windows it's a **bhl.bat** script). For example: `/Users/bob/bhl/bhl`, `C:\bhl\bhl.bat`. Falls back to `bhl` on `PATH`. Supports extra arguments (e.g. `/path/to/bhl --some-flag`). |
 | `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
 | `bhl.forceRebuild` | `true` | Force a full project rebuild on startup by setting `BHL_REBUILD=1`. |
 
