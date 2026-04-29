@@ -32,7 +32,7 @@ This compiles, packages, and installs the extension in one step. Requires Node.j
 
 | Setting | Default | Description |
 |---|---|---|
-| `bhl.executablePath` | `""` | Path to the `bhl` executable (On Windows it's a **bhl.bat** script). For example: `/Users/bob/bhl/bhl`, `C:\bhl\bhl.bat`. Falls back to `bhl` on `PATH`. Supports extra arguments (e.g. `/path/to/bhl --some-flag`). |
+| `bhl.executablePath` | `""` | Path to the `bhl` executable (On Windows it's a **bhl.bat** script). For example, Linux and Mac: `/Users/bob/bhl/bhl`, Windows: `C:\bhl\bhl.bat`. If not set falls back to `bhl` on `PATH`. You can pass extra arguments (e.g. `/Users/bob/bhl/bhl --some-flag`). |
 | `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
 | `bhl.forceRebuild` | `true` | Force a full project rebuild on startup by setting `BHL_REBUILD=1`. |
 
