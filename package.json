@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -15,7 +15,9 @@
   "categories": ["Programming Languages"],
   "activationEvents": [
     "onLanguage:bhl",
-    "onCommand:bhl.cloneRepository"
+    "onCommand:bhl.useRepository",
+    "onCommand:bhl.updateRepository",
+    "onCommand:bhl.removeRepository"
   ],
   "main": "./out/extension",
   "contributes": {
@@ -33,8 +35,16 @@
         "title": "BHL: Reload Project"
       },
       {
-        "command": "bhl.cloneRepository",
-        "title": "BHL: Clone Repository"
+        "command": "bhl.useRepository",
+        "title": "BHL: Use Internal BHL Repository"
+      },
+      {
+        "command": "bhl.updateRepository",
+        "title": "BHL: Update Internal BHL Repository"
+      },
+      {
+        "command": "bhl.removeRepository",
+        "title": "BHL: Remove Internal BHL Repository"
       }
     ],
     "semanticTokenScopes": [
@@ -69,7 +79,7 @@
         "bhl.executablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH. [$(cloud-download) Clone BHL repository](command:bhl.cloneRepository)"
+          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Use internal BHL repository](command:bhl.useRepository)\n- [Update internal BHL repository](command:bhl.updateRepository)\n- [Remove internal BHL repository](command:bhl.removeRepository)"
         },
         "bhl.logFile": {
           "type": "string",
@@ -79,7 +89,7 @@
         "bhl.forceRebuild": {
           "type": "boolean",
           "default": false,
-          "description": "Force full rebuild on startup by setting BHL_REBUILD=1."
+          "description": "Force full LSP server rebuild on startup by setting BHL_REBUILD=1. Useful for active LSP server development."
         }
       }
     }

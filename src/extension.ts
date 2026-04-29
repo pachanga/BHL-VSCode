@@ -75,38 +75,70 @@ export function activate(context: ExtensionContext) {
 
   client.start();
 
+  const internalCloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
+  const internalScriptName = process.platform === 'win32' ? 'bhl.cmd' : 'bhl';
+  const internalScriptPath = path.join(internalCloneDir, internalScriptName);
+
   context.subscriptions.push(
     client,
-    commands.registerCommand('bhl.cloneRepository', async () => {
-      const cloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
-      const scriptName = process.platform === 'win32' ? 'bhl.cmd' : 'bhl';
-      const scriptPath = path.join(cloneDir, scriptName);
-
+    commands.registerCommand('bhl.useRepository', async () => {
       try {
-        if (fs.existsSync(cloneDir)) {
-          const choice = await window.showWarningMessage(
-            `BHL repository already exists at:\n${cloneDir}\n\nPull latest changes?`,
-            'Pull', 'Cancel'
-          );
-          if (choice !== 'Pull') return;
+        if (!fs.existsSync(internalCloneDir)) {
+          fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
 
           await window.withProgress(
-            { location: ProgressLocation.Notification, title: 'BHL: Pulling latest changes...', cancellable: false },
-            () => runCommand('git', ['-C', cloneDir, 'pull'], cloneDir)
+            { location: ProgressLocation.Notification, title: 'BHL: Cloning repository...', cancellable: false },
+            () => runCommand('git', ['clone', BHL_REPO_URL, internalCloneDir], context.globalStorageUri.fsPath)
           );
+        }
+
+        await workspace.getConfiguration('bhl').update('executablePath', internalScriptPath, true);
+        window.showInformationMessage(`BHL executable path set to: ${internalScriptPath}`);
+      } catch (err: any) {
+        window.showErrorMessage(`BHL repository clone failed: ${err.message ?? err}`);
+      }
+    }),
+    commands.registerCommand('bhl.updateRepository', async () => {
+      try {
+        if (fs.existsSync(internalCloneDir)) {
+          await window.withProgress(
+            { location: ProgressLocation.Notification, title: 'BHL: Pulling latest changes...', cancellable: false },
+            () => runCommand('git', ['-C', internalCloneDir, 'pull'], internalCloneDir)
+          );
+          window.showInformationMessage('BHL repository updated successfully.');
         } else {
           fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
 
           await window.withProgress(
             { location: ProgressLocation.Notification, title: 'BHL: Cloning repository...', cancellable: false },
-            () => runCommand('git', ['clone', BHL_REPO_URL, cloneDir], context.globalStorageUri.fsPath)
+            () => runCommand('git', ['clone', BHL_REPO_URL, internalCloneDir], context.globalStorageUri.fsPath)
           );
-        }
 
-        await workspace.getConfiguration('bhl').update('executablePath', scriptPath, true);
-        window.showInformationMessage(`BHL repository ready. Executable path set to: ${scriptPath}`);
+          await workspace.getConfiguration('bhl').update('executablePath', internalScriptPath, true);
+          window.showInformationMessage(`BHL repository ready. Executable path set to: ${internalScriptPath}`);
+        }
       } catch (err: any) {
-        window.showErrorMessage(`BHL clone failed: ${err.message ?? err}`);
+        window.showErrorMessage(`BHL repository update failed: ${err.message ?? err}`);
+      }
+    }),
+    commands.registerCommand('bhl.removeRepository', async () => {
+      if (!fs.existsSync(internalCloneDir)) {
+        window.showErrorMessage('Internal BHL repository not found — nothing to remove.');
+        return;
+      }
+      const choice = await window.showWarningMessage(
+        `Remove internal BHL repository at:\n${internalCloneDir}`,
+        { modal: true },
+        'Remove'
+      );
+      if (choice !== 'Remove') return;
+
+      try {
+        fs.rmSync(internalCloneDir, { recursive: true, force: true });
+        await workspace.getConfiguration('bhl').update('executablePath', undefined, true);
+        window.showInformationMessage('Internal BHL repository removed.');
+      } catch (err: any) {
+        window.showErrorMessage(`BHL repository removal failed: ${err.message ?? err}`);
       }
     })
     // Uncomment if needed later:
