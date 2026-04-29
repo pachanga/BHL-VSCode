@@ -36,12 +36,8 @@ This compiles, packages, and installs the extension in one step. Requires Node.j
 | `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
 | `bhl.forceRebuild` | `true` | Forces LSP server rebuild on startup by setting `BHL_REBUILD=1`. Useful during active development of an LSP server. |
 
-Settings can be changed in **File → Preferences → Settings** under the **BHL** section, or directly in `settings.json`:
+Settings can be changed in **Code > Settings > Extensions** under the **BHL** section
 
-```json
-{
-  "bhl.executablePath": "/path/to/bhl",
-  "bhl.logFile": "/tmp/bhl-lsp.log",
-  "bhl.forceRebuild": false
-}
-```
+## Usage
+
+Start using the extension by opening the directory which contains **bhl.proj** file. Try opening any .bhl file. If everything is correct you should see **"Indexing BHL scripts"** small notification window. 
