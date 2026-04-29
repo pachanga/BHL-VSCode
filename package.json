@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -14,7 +14,8 @@
   },
   "categories": ["Programming Languages"],
   "activationEvents": [
-    "onLanguage:bhl"
+    "onLanguage:bhl",
+    "onCommand:bhl.cloneRepository"
   ],
   "main": "./out/extension",
   "contributes": {
@@ -30,6 +31,10 @@
       {
         "command": "bhl.reload",
         "title": "BHL: Reload Project"
+      },
+      {
+        "command": "bhl.cloneRepository",
+        "title": "BHL: Clone Repository"
       }
     ],
     "semanticTokenScopes": [
@@ -64,7 +69,7 @@
         "bhl.executablePath": {
           "type": "string",
           "default": "",
-          "description": "Path to the bhl executable. Defaults to 'bhl' on PATH."
+          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH. [$(cloud-download) Clone BHL repository](command:bhl.cloneRepository)"
         },
         "bhl.logFile": {
           "type": "string",
