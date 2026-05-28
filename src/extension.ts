@@ -42,7 +42,7 @@ export function activate(context: ExtensionContext) {
 
   // Detect Windows batch scripts
   const isWindowsBatch =
-    process.platform === 'win32' && /\.(bat|cmd)$/i.test(command);
+    process.platform === 'win32' && /\.bat$/i.test(command);
 
   const serverOptions: ServerOptions = {
     command,
@@ -76,7 +76,7 @@ export function activate(context: ExtensionContext) {
   client.start();
 
   const internalCloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
-  const internalScriptName = process.platform === 'win32' ? 'bhl.cmd' : 'bhl';
+  const internalScriptName = process.platform === 'win32' ? 'bhl.bat' : 'bhl';
   const internalScriptPath = path.join(internalCloneDir, internalScriptName);
 
   context.subscriptions.push(
