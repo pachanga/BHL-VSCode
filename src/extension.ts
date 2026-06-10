@@ -9,6 +9,7 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from 'vscode-languageclient/node';
+import { activateDebug } from './debug';
 
 let client: LanguageClient;
 
@@ -74,6 +75,7 @@ export function activate(context: ExtensionContext) {
   );
 
   client.start();
+  activateDebug(context);
 
   const internalCloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
   const internalScriptName = process.platform === 'win32' ? 'bhl.bat' : 'bhl';
