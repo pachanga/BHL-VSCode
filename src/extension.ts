@@ -3,7 +3,7 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspace, commands, window, ProgressLocation, ExtensionContext } from 'vscode';
+import { workspace, commands, window, ProgressLocation, ExtensionContext, Uri } from 'vscode';
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -26,7 +26,30 @@ function runCommand(cmd: string, args: string[], cwd: string): Promise<void> {
   });
 }
 
-export function activate(context: ExtensionContext) {
+async function findProjectFile(): Promise<string | undefined> {
+  const files = await workspace.findFiles('**/bhl.proj');
+  if (files.length === 0) return undefined;
+  if (files.length === 1) return files[0].fsPath;
+  const items = files.map(f => ({ label: workspace.asRelativePath(f), fsPath: f.fsPath }));
+  const picked = await window.showQuickPick(items, {
+    title: 'Select BHL Project',
+    placeHolder: 'Multiple bhl.proj files found',
+  });
+  return picked?.fsPath;
+}
+
+async function pickProjectFile(): Promise<string | undefined> {
+  const uris = await window.showOpenDialog({
+    canSelectMany: false,
+    filters: { 'BHL Project': ['proj'] },
+    openLabel: 'Select bhl.proj',
+    title: 'Select BHL Project File',
+  });
+  return uris?.[0]?.fsPath;
+}
+
+
+function startClient(context: ExtensionContext, projFile: string | undefined): LanguageClient {
   const config = workspace.getConfiguration('bhl');
 
   // IMPORTANT: treat executablePath as a full path, do NOT split on spaces
@@ -34,29 +57,25 @@ export function activate(context: ExtensionContext) {
   const logFile = config.get<string>('logFile') || '';
   const forceRebuild = config.get<boolean>('forceRebuild') ?? true;
 
-  const command = serverCommand;
   const args: string[] = ['lsp'];
-
   if (logFile) {
     args.push(`--log-file=${logFile}`);
   }
 
   // Detect Windows batch scripts
   const isWindowsBatch =
-    process.platform === 'win32' && /\.bat$/i.test(command);
+    process.platform === 'win32' && /\.bat$/i.test(serverCommand);
 
   const serverOptions: ServerOptions = {
-    command,
+    command: serverCommand,
     args,
     options: {
       env: {
         ...process.env,
-        ...(forceRebuild
-          ? { BHL_REBUILD: '1', BHL_SILENT: '1' }
-          : {}),
+        ...(forceRebuild ? { BHL_REBUILD: '1', BHL_SILENT: '1' } : {}),
       },
-      // Required for .bat/.cmd on Windows
       ...(isWindowsBatch ? { shell: true } : {}),
+      ...(projFile ? { cwd: path.dirname(projFile) } : {}),
     },
   };
 
@@ -67,14 +86,17 @@ export function activate(context: ExtensionContext) {
     },
   };
 
-  client = new LanguageClient(
-    'bhl',
-    'BHL Language Server',
-    serverOptions,
-    clientOptions
-  );
+  const newClient = new LanguageClient('bhl', 'BHL Language Server', serverOptions, clientOptions);
+  context.subscriptions.push(newClient);
+  newClient.start();
+  return newClient;
+}
 
-  client.start();
+export async function activate(context: ExtensionContext) {
+  const projFile = await findProjectFile();
+  if (projFile !== undefined) {
+    client = startClient(context, projFile);
+  }
   activateDebug(context);
 
   const internalCloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
@@ -82,7 +104,11 @@ export function activate(context: ExtensionContext) {
   const internalScriptPath = path.join(internalCloneDir, internalScriptName);
 
   context.subscriptions.push(
-    client,
+    commands.registerCommand('bhl.selectProjectFile', async () => {
+      const selected = await pickProjectFile();
+      if (!selected) return;
+      await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(selected)));
+    }),
     commands.registerCommand('bhl.useRepository', async () => {
       try {
         if (!fs.existsSync(internalCloneDir)) {

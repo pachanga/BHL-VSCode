@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -16,6 +16,7 @@
   "activationEvents": [
     "onLanguage:bhl",
     "onDebugResolve:bhl",
+    "onCommand:bhl.selectProjectFile",
     "onCommand:bhl.useRepository",
     "onCommand:bhl.updateRepository",
     "onCommand:bhl.removeRepository"
@@ -84,6 +85,10 @@
         "title": "BHL: Reload Project"
       },
       {
+        "command": "bhl.selectProjectFile",
+        "title": "BHL: Select Project File"
+      },
+      {
         "command": "bhl.useRepository",
         "title": "BHL: Use internal LSP Server"
       },
@@ -128,7 +133,7 @@
         "bhl.executablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Use internal LSP server](command:bhl.useRepository)\n- [Update internal LSP Server](command:bhl.updateRepository)\n- [Remove internal LSP server](command:bhl.removeRepository)"
+          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Use internal LSP server](command:bhl.useRepository)\n- [Update internal LSP server](command:bhl.updateRepository)\n- [Remove internal LSP server](command:bhl.removeRepository)"
         },
         "bhl.logFile": {
           "type": "string",
