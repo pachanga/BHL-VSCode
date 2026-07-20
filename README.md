@@ -4,9 +4,11 @@ VSCode extension providing BHL language support and debugging via the Language S
 
 ## Requirements
 
-For LSP support you need to have BHL installed somewhere. For simplicity you can clone the [BHL repository](https://github.com/bitdotgames/BHL) to some directory. In VSCode settings you can configure the extension to use a path to the `bhl` script from the cloned BHL directory (see below). The extension launches it as `path/to/BHL/bhl lsp` to start the language server.
+For LSP support you need to have a `bhl` executable available. The easiest way is to open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **BHL: Download LSP Release** — it fetches the [bitdotgames/BHL](https://github.com/bitdotgames/BHL/releases) `lsp-v*` releases, lets you pick a version compatible with your OS/architecture, then downloads, checksum-verifies, and extracts a self-contained binary (no `dotnet` required). The extension automatically points `bhl.executablePath` at the downloaded binary.
 
-Alternatively you can set up the internal BHL LSP server using the extension UI.
+To remove a downloaded release, run **BHL: Remove Downloaded LSP Release**.
+
+Alternatively, you can point `bhl.executablePath` at your own `bhl`/`bhl.bat` build (see Configuration below).
 
 <img width="1318" height="378" alt="image" src="https://github.com/user-attachments/assets/ab9041e6-8d07-4559-81ab-777a8604e540" />
 
@@ -60,8 +62,8 @@ The extension includes a DAP client that connects to the BHL debug server runnin
 
 | Setting | Default | Description |
 |---|---|---|
-| `bhl.executablePath` | `""` | Path to the `bhl` executable (on Windows it's a **bhl.bat** script). For example, Linux/Mac: `/Users/bob/BHL/bhl`, Windows: `C:\BHL\bhl.bat`. If not set falls back to `bhl` on `PATH`. |
+| `bhl.executablePath` | `""` | Path to the `bhl` executable (on Windows it's `bhl.exe` or a **bhl.bat** script). Set automatically after running **BHL: Download LSP Release**, or point it at your own build, e.g. Linux/Mac: `/Users/bob/BHL/bhl`, Windows: `C:\BHL\bhl.bat`. If not set falls back to `bhl` on `PATH`. |
 | `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
-| `bhl.forceRebuild` | `true` | Forces LSP server rebuild on startup by setting `BHL_REBUILD=1`. Useful during active development of the LSP server. |
+| `bhl.forceRebuild` | `false` | Forces LSP server rebuild on startup by setting `BHL_REBUILD=1`. Useful during active development of the LSP server when using your own source-built `bhl`. |
 
 Settings can be changed in **Code > Settings > Extensions** under the **BHL** section.

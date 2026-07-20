@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -17,9 +17,8 @@
     "onLanguage:bhl",
     "onDebugResolve:bhl",
     "onCommand:bhl.selectProjectFile",
-    "onCommand:bhl.useRepository",
-    "onCommand:bhl.updateRepository",
-    "onCommand:bhl.removeRepository"
+    "onCommand:bhl.downloadRelease",
+    "onCommand:bhl.removeDownloadedRelease"
   ],
   "main": "./out/extension",
   "contributes": {
@@ -89,16 +88,12 @@
         "title": "BHL: Select Project File"
       },
       {
-        "command": "bhl.useRepository",
-        "title": "BHL: Use internal LSP Server"
+        "command": "bhl.downloadRelease",
+        "title": "BHL: Download LSP Release"
       },
       {
-        "command": "bhl.updateRepository",
-        "title": "BHL: Update internal LSP Server"
-      },
-      {
-        "command": "bhl.removeRepository",
-        "title": "BHL: Remove internal LSP Server"
+        "command": "bhl.removeDownloadedRelease",
+        "title": "BHL: Remove Downloaded LSP Release"
       }
     ],
     "semanticTokenScopes": [
@@ -133,7 +128,7 @@
         "bhl.executablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Use internal LSP server](command:bhl.useRepository)\n- [Update internal LSP server](command:bhl.updateRepository)\n- [Remove internal LSP server](command:bhl.removeRepository)"
+          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Download LSP release](command:bhl.downloadRelease)\n- [Remove downloaded LSP release](command:bhl.removeDownloadedRelease)"
         },
         "bhl.logFile": {
           "type": "string",
@@ -157,9 +152,12 @@
   "devDependencies": {
     "@types/vscode": "^1.79.0",
     "@types/node": "^16.18.0",
+    "@types/adm-zip": "^0.5.8",
     "typescript": "^4.9.0"
   },
   "dependencies": {
-    "vscode-languageclient": "^8.1.0"
+    "vscode-languageclient": "^8.1.0",
+    "adm-zip": "^0.6.0",
+    "tar": "^7.5.20"
   }
 }

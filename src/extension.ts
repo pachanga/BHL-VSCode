@@ -1,6 +1,5 @@
 'use strict';
 
-import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { workspace, commands, window, ProgressLocation, ExtensionContext, Uri } from 'vscode';
@@ -10,21 +9,11 @@ import {
   ServerOptions,
 } from 'vscode-languageclient/node';
 import { activateDebug } from './debug';
+import { BhlRelease, currentPlatformSuffix, fetchReleases, findAsset, installRelease, releaseVersion } from './download';
 
 let client: LanguageClient;
 
-const BHL_REPO_URL = 'https://github.com/bitdotgames/BHL';
-
-function runCommand(cmd: string, args: string[], cwd: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = cp.spawn(cmd, args, { cwd, shell: process.platform === 'win32' });
-    proc.on('close', code => {
-      if (code === 0) resolve();
-      else reject(new Error(`${cmd} exited with code ${code}`));
-    });
-    proc.on('error', reject);
-  });
-}
+const DOWNLOADED_RELEASE_TAG_KEY = 'bhl.downloadedReleaseTag';
 
 async function findProjectFile(): Promise<string | undefined> {
   const files = await workspace.findFiles('**/bhl.proj');
@@ -99,9 +88,7 @@ export async function activate(context: ExtensionContext) {
   }
   activateDebug(context);
 
-  const internalCloneDir = path.join(context.globalStorageUri.fsPath, 'BHL');
-  const internalScriptName = process.platform === 'win32' ? 'bhl.bat' : 'bhl';
-  const internalScriptPath = path.join(internalCloneDir, internalScriptName);
+  const installsRoot = path.join(context.globalStorageUri.fsPath, 'lsp-releases');
 
   context.subscriptions.push(
     commands.registerCommand('bhl.selectProjectFile', async () => {
@@ -109,64 +96,70 @@ export async function activate(context: ExtensionContext) {
       if (!selected) return;
       await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(selected)));
     }),
-    commands.registerCommand('bhl.useRepository', async () => {
+    commands.registerCommand('bhl.downloadRelease', async () => {
       try {
-        if (!fs.existsSync(internalCloneDir)) {
-          fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
-
-          await window.withProgress(
-            { location: ProgressLocation.Notification, title: 'BHL: Cloning repository...', cancellable: false },
-            () => runCommand('git', ['clone', BHL_REPO_URL, internalCloneDir], context.globalStorageUri.fsPath)
-          );
+        const platformSuffix = currentPlatformSuffix();
+        if (!platformSuffix) {
+          window.showErrorMessage(`Unsupported platform for prebuilt BHL binaries (${process.platform}/${process.arch}).`);
+          return;
         }
 
-        await workspace.getConfiguration('bhl').update('executablePath', internalScriptPath, true);
-        window.showInformationMessage(`BHL executable path set to: ${internalScriptPath}`);
-      } catch (err: any) {
-        window.showErrorMessage(`BHL repository clone failed: ${err.message ?? err}`);
-      }
-    }),
-    commands.registerCommand('bhl.updateRepository', async () => {
-      try {
-        if (fs.existsSync(internalCloneDir)) {
-          await window.withProgress(
-            { location: ProgressLocation.Notification, title: 'BHL: Pulling latest changes...', cancellable: false },
-            () => runCommand('git', ['-C', internalCloneDir, 'pull'], internalCloneDir)
-          );
-          window.showInformationMessage('BHL repository updated successfully.');
-        } else {
-          fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
-
-          await window.withProgress(
-            { location: ProgressLocation.Notification, title: 'BHL: Cloning repository...', cancellable: false },
-            () => runCommand('git', ['clone', BHL_REPO_URL, internalCloneDir], context.globalStorageUri.fsPath)
-          );
-
-          await workspace.getConfiguration('bhl').update('executablePath', internalScriptPath, true);
-          window.showInformationMessage(`BHL repository ready. Executable path set to: ${internalScriptPath}`);
+        const releases = await window.withProgress(
+          { location: ProgressLocation.Notification, title: 'BHL: Fetching releases...', cancellable: false },
+          () => fetchReleases()
+        );
+        const compatible = releases.filter(r => findAsset(r, platformSuffix));
+        if (compatible.length === 0) {
+          window.showInformationMessage('No compatible BHL LSP releases found for this platform.');
+          return;
         }
+
+        const currentTag = context.globalState.get<string>(DOWNLOADED_RELEASE_TAG_KEY);
+        const picked = await window.showQuickPick(
+          compatible.map(r => ({
+            label: releaseVersion(r),
+            description: r.tagName === currentTag ? 'currently installed' : undefined,
+            release: r,
+          })),
+          { title: 'Select BHL LSP Release', placeHolder: 'Pick a version to download' }
+        );
+        if (!picked) return;
+        const release: BhlRelease = picked.release;
+
+        const binaryPath = await window.withProgress(
+          { location: ProgressLocation.Notification, title: `BHL: Downloading ${releaseVersion(release)}...`, cancellable: false },
+          (progress) => installRelease(release, installsRoot, message => progress.report({ message }))
+        );
+
+        await workspace.getConfiguration('bhl').update('executablePath', binaryPath, true);
+        await context.globalState.update(DOWNLOADED_RELEASE_TAG_KEY, release.tagName);
+        window.showInformationMessage(`BHL executable path set to: ${binaryPath}`);
       } catch (err: any) {
-        window.showErrorMessage(`BHL repository update failed: ${err.message ?? err}`);
+        window.showErrorMessage(`BHL release download failed: ${err.message ?? err}`);
       }
     }),
-    commands.registerCommand('bhl.removeRepository', async () => {
-      if (!fs.existsSync(internalCloneDir)) {
-        window.showErrorMessage('Internal BHL repository not found — nothing to remove.');
+    commands.registerCommand('bhl.removeDownloadedRelease', async () => {
+      if (!fs.existsSync(installsRoot)) {
+        window.showErrorMessage('No downloaded BHL release found — nothing to remove.');
         return;
       }
       const choice = await window.showWarningMessage(
-        `Remove internal BHL repository at:\n${internalCloneDir}`,
+        `Remove downloaded BHL LSP releases at:\n${installsRoot}`,
         { modal: true },
         'Remove'
       );
       if (choice !== 'Remove') return;
 
       try {
-        fs.rmSync(internalCloneDir, { recursive: true, force: true });
-        await workspace.getConfiguration('bhl').update('executablePath', undefined, true);
-        window.showInformationMessage('Internal BHL repository removed.');
+        const executablePath = workspace.getConfiguration('bhl').get<string>('executablePath') || '';
+        fs.rmSync(installsRoot, { recursive: true, force: true });
+        await context.globalState.update(DOWNLOADED_RELEASE_TAG_KEY, undefined);
+        if (executablePath.startsWith(installsRoot)) {
+          await workspace.getConfiguration('bhl').update('executablePath', undefined, true);
+        }
+        window.showInformationMessage('Downloaded BHL LSP releases removed.');
       } catch (err: any) {
-        window.showErrorMessage(`BHL repository removal failed: ${err.message ?? err}`);
+        window.showErrorMessage(`BHL release removal failed: ${err.message ?? err}`);
       }
     })
     // Uncomment if needed later:
