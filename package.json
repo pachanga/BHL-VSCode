@@ -2,13 +2,14 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
   },
   "description": "BHL language support",
   "author": "BHL",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.79.0"
   },
@@ -27,7 +28,11 @@
         "id": "bhl",
         "aliases": ["BHL", "bhl"],
         "extensions": [".bhl"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./images/icon.svg",
+          "dark": "./images/icon.svg"
+        }
       }
     ],
     "breakpoints": [
