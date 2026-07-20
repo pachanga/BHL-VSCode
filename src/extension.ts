@@ -13,7 +13,7 @@ import { BhlRelease, currentPlatformSuffix, fetchReleases, findAsset, installRel
 
 let client: LanguageClient;
 
-const DOWNLOADED_RELEASE_TAG_KEY = 'bhl.downloadedReleaseTag';
+const DOWNLOADED_BINARY_PATH_KEY = 'bhl.downloadedBinaryPath';
 
 async function findProjectFile(): Promise<string | undefined> {
   const files = await workspace.findFiles('**/bhl.proj');
@@ -41,10 +41,14 @@ async function pickProjectFile(): Promise<string | undefined> {
 function startClient(context: ExtensionContext, projFile: string | undefined): LanguageClient {
   const config = workspace.getConfiguration('bhl');
 
-  // IMPORTANT: treat executablePath as a full path, do NOT split on spaces
-  const serverCommand = config.get<string>('executablePath') || 'bhl';
+  const useCustomInstallation = config.get<boolean>('useCustomInstallation') ?? false;
+  const customPath = config.get<string>('executablePath') || '';
+  const downloadedBinaryPath = context.globalState.get<string>(DOWNLOADED_BINARY_PATH_KEY) || '';
+
+  // IMPORTANT: treat the resolved path as a full path, do NOT split on spaces
+  const serverCommand = (useCustomInstallation ? customPath : downloadedBinaryPath) || 'bhl';
   const logFile = config.get<string>('logFile') || '';
-  const forceRebuild = config.get<boolean>('forceRebuild') ?? true;
+  const forceRebuild = useCustomInstallation && (config.get<boolean>('forceRebuild') ?? false);
 
   const args: string[] = ['lsp'];
   if (logFile) {
@@ -114,11 +118,11 @@ export async function activate(context: ExtensionContext) {
           return;
         }
 
-        const currentTag = context.globalState.get<string>(DOWNLOADED_RELEASE_TAG_KEY);
+        const currentVersion = workspace.getConfiguration('bhl').get<string>('downloadedReleaseVersion');
         const picked = await window.showQuickPick(
           compatible.map(r => ({
             label: releaseVersion(r),
-            description: r.tagName === currentTag ? 'currently installed' : undefined,
+            description: releaseVersion(r) === currentVersion ? 'currently installed' : undefined,
             release: r,
           })),
           { title: 'Select BHL LSP Release', placeHolder: 'Pick a version to download' }
@@ -131,9 +135,11 @@ export async function activate(context: ExtensionContext) {
           (progress) => installRelease(release, installsRoot, message => progress.report({ message }))
         );
 
-        await workspace.getConfiguration('bhl').update('executablePath', binaryPath, true);
-        await context.globalState.update(DOWNLOADED_RELEASE_TAG_KEY, release.tagName);
-        window.showInformationMessage(`BHL executable path set to: ${binaryPath}`);
+        await context.globalState.update(DOWNLOADED_BINARY_PATH_KEY, binaryPath);
+        await workspace.getConfiguration('bhl').update('downloadedReleaseVersion', releaseVersion(release), true);
+        window.showInformationMessage(
+          `Downloaded BHL ${releaseVersion(release)} to: ${binaryPath}\n\nUsed automatically unless "Use Custom Installation" is enabled.`
+        );
       } catch (err: any) {
         window.showErrorMessage(`BHL release download failed: ${err.message ?? err}`);
       }
@@ -151,12 +157,9 @@ export async function activate(context: ExtensionContext) {
       if (choice !== 'Remove') return;
 
       try {
-        const executablePath = workspace.getConfiguration('bhl').get<string>('executablePath') || '';
         fs.rmSync(installsRoot, { recursive: true, force: true });
-        await context.globalState.update(DOWNLOADED_RELEASE_TAG_KEY, undefined);
-        if (executablePath.startsWith(installsRoot)) {
-          await workspace.getConfiguration('bhl').update('executablePath', undefined, true);
-        }
+        await context.globalState.update(DOWNLOADED_BINARY_PATH_KEY, undefined);
+        await workspace.getConfiguration('bhl').update('downloadedReleaseVersion', undefined, true);
         window.showInformationMessage('Downloaded BHL LSP releases removed.');
       } catch (err: any) {
         window.showErrorMessage(`BHL release removal failed: ${err.message ?? err}`);

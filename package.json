@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -125,10 +125,20 @@
     "configuration": {
       "title": "BHL",
       "properties": {
+        "bhl.useCustomInstallation": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Use a custom BHL installation instead of a downloaded LSP release. When enabled, `bhl.executablePath` is used to launch the server; when disabled (default), the last release installed via **BHL: Download LSP Release** is used automatically."
+        },
         "bhl.executablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the `bhl` executable. Defaults to `bhl` on PATH.\n\n- [Download LSP release](command:bhl.downloadRelease)\n- [Remove downloaded LSP release](command:bhl.removeDownloadedRelease)"
+          "markdownDescription": "Path to a custom `bhl` executable. Only used when `bhl.useCustomInstallation` is enabled. Falls back to `bhl` on PATH if left empty.\n\n- [Download LSP release](command:bhl.downloadRelease)\n- [Remove downloaded LSP release](command:bhl.removeDownloadedRelease)"
+        },
+        "bhl.downloadedReleaseVersion": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Version of the currently downloaded LSP release, e.g. `v0.3.5` (empty if none). Managed automatically by **BHL: Download LSP Release** / **BHL: Remove Downloaded LSP Release** — not meant to be edited by hand."
         },
         "bhl.logFile": {
           "type": "string",
@@ -138,7 +148,7 @@
         "bhl.forceRebuild": {
           "type": "boolean",
           "default": false,
-          "description": "Force full LSP server rebuild on startup by setting BHL_REBUILD=1. Useful for active LSP server development."
+          "markdownDescription": "Force full LSP server rebuild on startup by setting `BHL_REBUILD=1`. Only applies when `bhl.useCustomInstallation` is enabled. Useful for active LSP server development."
         }
       }
     }
