@@ -8,9 +8,7 @@ For LSP support you need to have a `bhl` executable available. The easiest way i
 
 To remove a downloaded release, run **BHL: Remove Downloaded LSP Release**.
 
-Alternatively, enable `bhl.useCustomInstallation` and point `bhl.executablePath` at your own `bhl`/`bhl.bat` build (see Configuration below).
-
-<img width="1318" height="378" alt="image" src="https://github.com/user-attachments/assets/ab9041e6-8d07-4559-81ab-777a8604e540" />
+Alternatively, enable `bhl.useCustomInstallation` and point `bhl.executablePath` at your own `bhl`/`bhl.bat` build.
 
 
 ## Installation
@@ -62,10 +60,10 @@ The extension includes a DAP client that connects to the BHL debug server runnin
 
 | Setting | Default | Description |
 |---|---|---|
-| `bhl.useCustomInstallation` | `false` | Use `bhl.executablePath` instead of a downloaded LSP release to launch the server. |
-| `bhl.executablePath` | `""` | Path to a custom `bhl` executable (on Windows it's `bhl.exe` or a **bhl.bat** script). Only used when `bhl.useCustomInstallation` is enabled, e.g. Linux/Mac: `/Users/bob/BHL/bhl`, Windows: `C:\BHL\bhl.bat`. Falls back to `bhl` on `PATH` if left empty. |
 | `bhl.downloadedReleaseVersion` | `""` | Version of the currently downloaded LSP release (e.g. `v0.3.5`). Managed automatically — not meant to be edited by hand. |
-| `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
+| `bhl.executablePath` | `""` | Path to a custom `bhl` executable (on Windows it's `bhl.exe` or a **bhl.bat** script). Only used when `bhl.useCustomInstallation` is enabled, e.g. Linux/Mac: `/Users/bob/BHL/bhl`, Windows: `C:\BHL\bhl.bat`. Falls back to `bhl` on `PATH` if left empty. |
 | `bhl.forceRebuild` | `false` | Forces LSP server rebuild on startup by setting `BHL_REBUILD=1`. Only applies when `bhl.useCustomInstallation` is enabled. Useful during active development of the LSP server when using your own source-built `bhl`. |
+| `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
+| `bhl.useCustomInstallation` | `false` | Use `bhl.executablePath` instead of a downloaded LSP release to launch the server. |
 
 Settings can be changed in **Code > Settings > Extensions** under the **BHL** section.
