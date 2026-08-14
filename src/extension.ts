@@ -2,18 +2,70 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { workspace, commands, window, ProgressLocation, ExtensionContext, Uri } from 'vscode';
+import {
+  workspace,
+  commands,
+  window,
+  ExtensionContext,
+  ProgressLocation,
+  QuickPickItem,
+  QuickPickItemKind,
+  StatusBarAlignment,
+  StatusBarItem,
+  Uri,
+} from 'vscode';
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
 } from 'vscode-languageclient/node';
 import { activateDebug } from './debug';
-import { BhlRelease, currentPlatformSuffix, fetchReleases, findAsset, installRelease, releaseVersion } from './download';
+import {
+  BhlRelease,
+  DOWNLOADED_BINARY_PATH_KEY,
+  currentPlatformSuffix,
+  fetchReleases,
+  findAsset,
+  formatReleaseDate,
+  formatReleaseSize,
+  installRelease,
+  releaseVersion,
+  versionFromBinaryPath,
+} from './download';
 
-let client: LanguageClient;
+let client: LanguageClient | undefined;
+let statusBarItem: StatusBarItem;
 
-const DOWNLOADED_BINARY_PATH_KEY = 'bhl.downloadedBinaryPath';
+function statusBarLabel(context: ExtensionContext): string {
+  const config = workspace.getConfiguration('bhl');
+  if (config.get<boolean>('useCustomInstallation') ?? false) {
+    const customPath = config.get<string>('useCustomInstallationExecutablePath') || '';
+    return customPath ? `BHL: custom (${path.basename(customPath)})` : 'BHL: custom (no path set)';
+  }
+  const binaryPath = context.globalState.get<string>(DOWNLOADED_BINARY_PATH_KEY) || '';
+  const version = versionFromBinaryPath(binaryPath);
+  return version ? `BHL: ${version}` : 'BHL: no release installed';
+}
+
+/**
+ * bhl.downloadedReleaseVersion is a display-only mirror of the binary path for the Settings
+ * page (Settings UI can't show a plain read-only value, only an editable field or nothing).
+ * Recomputing and correcting it here — called on every status bar refresh — means it can
+ * never drift for long even if a write is missed somewhere.
+ */
+function selfHealDownloadedReleaseVersionSetting(context: ExtensionContext): void {
+  const binaryPath = context.globalState.get<string>(DOWNLOADED_BINARY_PATH_KEY) || '';
+  const derived = versionFromBinaryPath(binaryPath) || '';
+  const config = workspace.getConfiguration('bhl');
+  if ((config.get<string>('downloadedReleaseVersion') || '') !== derived) {
+    config.update('downloadedReleaseVersion', derived || undefined, true).then(undefined, () => {});
+  }
+}
+
+function updateStatusBarItem(context: ExtensionContext): void {
+  statusBarItem.text = `$(plug) ${statusBarLabel(context)}`;
+  selfHealDownloadedReleaseVersionSetting(context);
+}
 
 async function findProjectFile(): Promise<string | undefined> {
   const files = await workspace.findFiles('**/bhl.proj');
@@ -38,11 +90,33 @@ async function pickProjectFile(): Promise<string | undefined> {
 }
 
 
+async function startOrRestartClient(context: ExtensionContext, projFile: string | undefined): Promise<void> {
+  if (client) {
+    await client.stop();
+  }
+  client = startClient(context, projFile);
+  updateStatusBarItem(context);
+}
+
+/**
+ * Applies a binary/config change to the language client only if one is already running.
+ * Installing/removing a release shouldn't itself start the LSP server — e.g. there may be no
+ * .bhl file open yet, or no bhl.proj found at all — it'll just pick up the change naturally
+ * whenever it does start (or via "BHL: Reload Project").
+ */
+async function refreshClientIfRunning(context: ExtensionContext, projFile: string | undefined): Promise<void> {
+  if (client) {
+    await startOrRestartClient(context, projFile);
+  } else {
+    updateStatusBarItem(context);
+  }
+}
+
 function startClient(context: ExtensionContext, projFile: string | undefined): LanguageClient {
   const config = workspace.getConfiguration('bhl');
 
   const useCustomInstallation = config.get<boolean>('useCustomInstallation') ?? false;
-  const customPath = config.get<string>('executablePath') || '';
+  const customPath = config.get<string>('useCustomInstallationExecutablePath') || '';
   const downloadedBinaryPath = context.globalState.get<string>(DOWNLOADED_BINARY_PATH_KEY) || '';
 
   // IMPORTANT: treat the resolved path as a full path, do NOT split on spaces
@@ -85,7 +159,27 @@ function startClient(context: ExtensionContext, projFile: string | undefined): L
   return newClient;
 }
 
+/**
+ * One-time migration for the bhl.executablePath -> bhl.useCustomInstallationExecutablePath
+ * rename. bhl.executablePath is intentionally undeclared now (so it doesn't show in Settings
+ * UI at all) — reading an undeclared key is safe, but writing to one throws, so the stale
+ * value is left in place rather than cleared. Only runs while the new key is still empty, so
+ * it can't later clobber a value deliberately set (or cleared) through the new setting.
+ */
+async function migrateLegacyExecutablePathSetting(): Promise<void> {
+  const config = workspace.getConfiguration('bhl');
+  const legacyPath = config.get<string>('executablePath');
+  if (!legacyPath || config.get<string>('useCustomInstallationExecutablePath')) return;
+  try {
+    await config.update('useCustomInstallationExecutablePath', legacyPath, true);
+  } catch {
+    // best-effort
+  }
+}
+
 export async function activate(context: ExtensionContext) {
+  await migrateLegacyExecutablePathSetting();
+
   const projFile = await findProjectFile();
   if (projFile !== undefined) {
     client = startClient(context, projFile);
@@ -93,14 +187,31 @@ export async function activate(context: ExtensionContext) {
   activateDebug(context);
 
   const installsRoot = path.join(context.globalStorageUri.fsPath, 'lsp-releases');
+  const restartClient = () => startOrRestartClient(context, projFile);
+  const refreshClient = () => refreshClientIfRunning(context, projFile);
+
+  statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100);
+  statusBarItem.command = 'bhl.manageLspVersions';
+  statusBarItem.tooltip = 'Manage BHL LSP versions';
+  updateStatusBarItem(context);
+  statusBarItem.show();
 
   context.subscriptions.push(
+    statusBarItem,
+    workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('bhl.useCustomInstallation') || e.affectsConfiguration('bhl.useCustomInstallationExecutablePath')) {
+        updateStatusBarItem(context);
+      }
+    }),
     commands.registerCommand('bhl.selectProjectFile', async () => {
       const selected = await pickProjectFile();
       if (!selected) return;
       await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(selected)));
     }),
-    commands.registerCommand('bhl.downloadRelease', async () => {
+    commands.registerCommand('bhl.reload', async () => {
+      await restartClient();
+    }),
+    commands.registerCommand('bhl.manageLspVersions', async () => {
       try {
         const platformSuffix = currentPlatformSuffix();
         if (!platformSuffix) {
@@ -118,57 +229,66 @@ export async function activate(context: ExtensionContext) {
           return;
         }
 
-        const currentVersion = workspace.getConfiguration('bhl').get<string>('downloadedReleaseVersion');
-        const picked = await window.showQuickPick(
-          compatible.map(r => ({
-            label: releaseVersion(r),
-            description: releaseVersion(r) === currentVersion ? 'currently installed' : undefined,
-            release: r,
-          })),
-          { title: 'Select BHL LSP Release', placeHolder: 'Pick a version to download' }
-        );
-        if (!picked) return;
-        const release: BhlRelease = picked.release;
+        const installedVersion = versionFromBinaryPath(context.globalState.get<string>(DOWNLOADED_BINARY_PATH_KEY) || '');
+        const firstStableIndex = compatible.findIndex(r => !r.prerelease);
 
+        type VersionPickItem = QuickPickItem & { release?: BhlRelease; action?: 'remove' };
+        const items: VersionPickItem[] = [];
+        if (installedVersion) {
+          items.push({ label: '$(trash) Remove downloaded release', description: `currently ${installedVersion}`, action: 'remove' });
+          items.push({ label: '', kind: QuickPickItemKind.Separator });
+        }
+        compatible.forEach((r, index) => {
+          const version = releaseVersion(r);
+          const asset = findAsset(r, platformSuffix)!;
+          const tags: string[] = [];
+          if (index === firstStableIndex) tags.push('latest');
+          if (r.prerelease) tags.push('prerelease');
+          if (version === installedVersion) tags.push('installed');
+          items.push({
+            label: version,
+            description: tags.join(', ') || undefined,
+            detail: [formatReleaseDate(r.publishedAt), formatReleaseSize(asset.size)].filter(Boolean).join(' · ') || undefined,
+            release: r,
+          });
+        });
+
+        const picked = await window.showQuickPick(items, {
+          title: 'BHL LSP Versions',
+          placeHolder: installedVersion ? `Currently installed: ${installedVersion}` : 'Select a version to install',
+        });
+        if (!picked) return;
+
+        if (picked.action === 'remove') {
+          if (!fs.existsSync(installsRoot)) {
+            window.showErrorMessage('No downloaded BHL release found — nothing to remove.');
+            return;
+          }
+          const choice = await window.showWarningMessage(
+            `Remove downloaded BHL LSP releases at:\n${installsRoot}`,
+            { modal: true },
+            'Remove'
+          );
+          if (choice !== 'Remove') return;
+          fs.rmSync(installsRoot, { recursive: true, force: true });
+          await context.globalState.update(DOWNLOADED_BINARY_PATH_KEY, undefined);
+          await refreshClient();
+          window.showInformationMessage('Downloaded BHL LSP release removed.');
+          return;
+        }
+
+        const release = picked.release!;
         const binaryPath = await window.withProgress(
-          { location: ProgressLocation.Notification, title: `BHL: Downloading ${releaseVersion(release)}...`, cancellable: false },
+          { location: ProgressLocation.Notification, title: `BHL: Installing ${releaseVersion(release)}...`, cancellable: false },
           (progress) => installRelease(release, installsRoot, message => progress.report({ message }))
         );
-
         await context.globalState.update(DOWNLOADED_BINARY_PATH_KEY, binaryPath);
-        await workspace.getConfiguration('bhl').update('downloadedReleaseVersion', releaseVersion(release), true);
-        window.showInformationMessage(
-          `Downloaded BHL ${releaseVersion(release)} to: ${binaryPath}\n\nUsed automatically unless "Use Custom Installation" is enabled.`
-        );
+        await refreshClient();
+        window.showInformationMessage(`Installed BHL ${releaseVersion(release)}. Used automatically unless "Use Custom Installation" is enabled.`);
       } catch (err: any) {
-        window.showErrorMessage(`BHL release download failed: ${err.message ?? err}`);
-      }
-    }),
-    commands.registerCommand('bhl.removeDownloadedRelease', async () => {
-      if (!fs.existsSync(installsRoot)) {
-        window.showErrorMessage('No downloaded BHL release found — nothing to remove.');
-        return;
-      }
-      const choice = await window.showWarningMessage(
-        `Remove downloaded BHL LSP releases at:\n${installsRoot}`,
-        { modal: true },
-        'Remove'
-      );
-      if (choice !== 'Remove') return;
-
-      try {
-        fs.rmSync(installsRoot, { recursive: true, force: true });
-        await context.globalState.update(DOWNLOADED_BINARY_PATH_KEY, undefined);
-        await workspace.getConfiguration('bhl').update('downloadedReleaseVersion', undefined, true);
-        window.showInformationMessage('Downloaded BHL LSP releases removed.');
-      } catch (err: any) {
-        window.showErrorMessage(`BHL release removal failed: ${err.message ?? err}`);
+        window.showErrorMessage(`BHL LSP version management failed: ${err.message ?? err}`);
       }
     })
-    // Uncomment if needed later:
-    // commands.registerCommand('bhl.reload', () => {
-    //   client.sendRequest('workspace/executeCommand', { command: 'bhl.reload' });
-    // })
   );
 }
 

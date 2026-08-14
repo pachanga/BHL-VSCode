@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -18,8 +18,8 @@
     "onLanguage:bhl",
     "onDebugResolve:bhl",
     "onCommand:bhl.selectProjectFile",
-    "onCommand:bhl.downloadRelease",
-    "onCommand:bhl.removeDownloadedRelease"
+    "onCommand:bhl.reload",
+    "onCommand:bhl.manageLspVersions"
   ],
   "main": "./out/extension",
   "contributes": {
@@ -93,12 +93,8 @@
         "title": "BHL: Select Project File"
       },
       {
-        "command": "bhl.downloadRelease",
-        "title": "BHL: Download LSP Release"
-      },
-      {
-        "command": "bhl.removeDownloadedRelease",
-        "title": "BHL: Remove Downloaded LSP Release"
+        "command": "bhl.manageLspVersions",
+        "title": "BHL: Manage LSP Versions"
       }
     ],
     "semanticTokenScopes": [
@@ -133,17 +129,17 @@
         "bhl.useCustomInstallation": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Use a custom BHL installation instead of a downloaded LSP release. When enabled, `bhl.executablePath` is used to launch the server; when disabled (default), the last release installed via **BHL: Download LSP Release** is used automatically."
+          "markdownDescription": "Use a custom BHL installation instead of a downloaded LSP release. When enabled, `bhl.useCustomInstallationExecutablePath` is used to launch the server; when disabled (default), the release installed via **BHL: Manage LSP Versions** is used automatically."
         },
-        "bhl.executablePath": {
+        "bhl.useCustomInstallationExecutablePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to a custom `bhl` executable. Only used when `bhl.useCustomInstallation` is enabled. Falls back to `bhl` on PATH if left empty.\n\n- [Download LSP release](command:bhl.downloadRelease)\n- [Remove downloaded LSP release](command:bhl.removeDownloadedRelease)"
+          "markdownDescription": "Path to a custom `bhl` executable. Only used when `bhl.useCustomInstallation` is enabled. Falls back to `bhl` on PATH if left empty."
         },
         "bhl.downloadedReleaseVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Version of the currently downloaded LSP release, e.g. `v0.3.5` (empty if none). Managed automatically by **BHL: Download LSP Release** / **BHL: Remove Downloaded LSP Release** — not meant to be edited by hand."
+          "markdownDescription": "Version of the currently downloaded LSP release (empty if none).\n\n- [Manage LSP versions](command:bhl.manageLspVersions)"
         },
         "bhl.logFile": {
           "type": "string",

@@ -13,21 +13,55 @@ const RELEASES_URL = 'https://api.github.com/repos/bitdotgames/BHL/releases?per_
 const USER_AGENT = 'BHL-VSCode-Extension';
 const MAX_REDIRECTS = 5;
 
+export const DOWNLOADED_BINARY_PATH_KEY = 'bhl.downloadedBinaryPath';
+
 export interface BhlReleaseAsset {
   name: string;
   downloadUrl: string;
+  size: number;
 }
 
 export interface BhlRelease {
   tagName: string;
   draft: boolean;
   prerelease: boolean;
+  publishedAt: string;
   assets: BhlReleaseAsset[];
+}
+
+function stripLspTagPrefix(tagName: string): string {
+  return tagName.replace(/^lsp-/, '');
 }
 
 /** `lsp-v0.3.1` -> `v0.3.1`, matching the version embedded in asset file names. */
 export function releaseVersion(release: BhlRelease): string {
-  return release.tagName.replace(/^lsp-/, '');
+  return stripLspTagPrefix(release.tagName);
+}
+
+/**
+ * Recovers the installed version from `installRelease`'s own layout
+ * (`installsRoot/<tagName>/<platformSuffix>/bhl[.exe]`) instead of tracking it separately —
+ * the binary path is the only thing actually used to launch the server, so deriving the
+ * version display from it means the two can never drift out of sync.
+ */
+export function versionFromBinaryPath(binaryPath: string): string | undefined {
+  if (!binaryPath) return undefined;
+  const tagName = path.basename(path.dirname(path.dirname(binaryPath)));
+  return tagName.startsWith('lsp-') ? stripLspTagPrefix(tagName) : undefined;
+}
+
+export function formatReleaseSize(bytes: number): string {
+  if (!bytes) return '';
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatReleaseDate(iso: string): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
 }
 
 function httpGet(url: string, headers: Record<string, string>, redirects = 0): Promise<{ statusCode: number; headers: NodeJS.Dict<string | string[]>; body: Buffer }> {
@@ -106,7 +140,8 @@ export async function fetchReleases(): Promise<BhlRelease[]> {
     tagName: r.tag_name,
     draft: r.draft,
     prerelease: r.prerelease,
-    assets: (r.assets ?? []).map((a: any) => ({ name: a.name, downloadUrl: a.browser_download_url })),
+    publishedAt: r.published_at,
+    assets: (r.assets ?? []).map((a: any) => ({ name: a.name, downloadUrl: a.browser_download_url, size: a.size })),
   }));
   return releases.filter(r => !r.draft && r.tagName.startsWith('lsp-v'));
 }
