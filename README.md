@@ -2,10 +2,6 @@
 
 VSCode extension providing BHL language support and debugging via the Language Server Protocol and Debug Adapter Protocol.
 
-## Requirements
-
-Run **BHL: Manage LSP Versions** from the Command Palette to pick and install an LSP release, or enable `bhl.useCustomInstallation` to point at your own `bhl` build instead. The status bar shows which one is active — click it to open the version picker.
-
 ## Installation
 
 ### From GitHub Releases (recommended)
