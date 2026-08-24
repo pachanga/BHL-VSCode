@@ -208,7 +208,14 @@ export async function activate(context: ExtensionContext) {
       if (!selected) return;
       await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(selected)));
     }),
-    commands.registerCommand('bhl.reload', async () => {
+    // Deliberately NOT registering 'bhl.reload' here: the BHL LSP server dynamically registers
+    // it itself (via workspace/executeCommand, part of a batched client/registerCapability call
+    // together with semantic tokens, hover, completion, etc.). Registering the same command ID
+    // client-side collides with that and fails the whole batch, silently breaking every feature
+    // in it — semantic highlighting included. 'BHL: Restart LSP Client' below is for the
+    // different case where the whole client process (not just the server's project state) needs
+    // to be killed and restarted, e.g. after switching to a different downloaded binary.
+    commands.registerCommand('bhl.restartLanguageClient', async () => {
       await restartClient();
     }),
     commands.registerCommand('bhl.manageLspVersions', async () => {

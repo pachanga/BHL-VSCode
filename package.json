@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -19,6 +19,7 @@
     "onDebugResolve:bhl",
     "onCommand:bhl.selectProjectFile",
     "onCommand:bhl.reload",
+    "onCommand:bhl.restartLanguageClient",
     "onCommand:bhl.manageLspVersions"
   ],
   "main": "./out/extension",
@@ -87,6 +88,10 @@
       {
         "command": "bhl.reload",
         "title": "BHL: Reload Project"
+      },
+      {
+        "command": "bhl.restartLanguageClient",
+        "title": "BHL: Restart LSP Client"
       },
       {
         "command": "bhl.selectProjectFile",
