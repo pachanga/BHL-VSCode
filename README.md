@@ -4,12 +4,7 @@ VSCode extension providing BHL language support and debugging via the Language S
 
 ## Requirements
 
-For LSP support you need to have a `bhl` executable available. The easiest way is to open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **BHL: Manage LSP Versions** — it shows a picker listing the [bitdotgames/BHL](https://github.com/bitdotgames/BHL/releases) `lsp-v*` releases compatible with your OS/architecture (with release dates, sizes, and "latest"/prerelease/installed labels), plus a "Remove downloaded release" entry when one is installed. Selecting a version downloads, checksum-verifies, and extracts a self-contained binary (no `dotnet` required). The extension picks up the change immediately — no window reload needed.
-
-To switch to a custom installation instead, enable `bhl.useCustomInstallation` and point `bhl.useCustomInstallationExecutablePath` at your own `bhl`/`bhl.bat` build.
-
-The status bar shows which one is currently active (e.g. `BHL: v0.3.5` or `BHL: custom (bhl.bat)`) — click it to open the version picker.
-
+Run **BHL: Manage LSP Versions** from the Command Palette to pick and install an LSP release, or enable `bhl.useCustomInstallation` to point at your own `bhl` build instead. The status bar shows which one is active — click it to open the version picker.
 
 ## Installation
 
@@ -60,12 +55,9 @@ The extension includes a DAP client that connects to the BHL debug server runnin
 
 | Setting | Default | Description |
 |---|---|---|
-| `bhl.downloadedReleaseVersion` | `""` | Version of the currently downloaded LSP release (empty if none). |
-| `bhl.forceRebuild` | `false` | Forces LSP server rebuild on startup by setting `BHL_REBUILD=1`. Only applies when `bhl.useCustomInstallation` is enabled. Useful during active development of the LSP server when using your own source-built `bhl`. |
-| `bhl.logFile` | `""` | If set, the LSP server writes its log to this file (`--log-file=<path>`). |
-| `bhl.useCustomInstallation` | `false` | Use `bhl.useCustomInstallationExecutablePath` instead of a downloaded LSP release to launch the server. |
-| `bhl.useCustomInstallationExecutablePath` | `""` | Path to a custom `bhl` executable (on Windows it's `bhl.exe` or a **bhl.bat** script). Only used when `bhl.useCustomInstallation` is enabled, e.g. Linux/Mac: `/Users/bob/BHL/bhl`, Windows: `C:\BHL\bhl.bat`. Falls back to `bhl` on `PATH` if left empty. |
+| `bhl.useCustomInstallation` | `false` | Use a custom `bhl` executable instead of a downloaded LSP release. |
+| `bhl.useCustomInstallationExecutablePath` | `""` | Path to the custom executable. Only used when `bhl.useCustomInstallation` is enabled. |
+| `bhl.forceRebuild` | `false` | Rebuild the LSP server on startup (`BHL_REBUILD=1`). Custom installs only. |
+| `bhl.logFile` | `""` | Path to the LSP log file. |
 
-`bhl.executablePath` was renamed to `bhl.useCustomInstallationExecutablePath`; any existing value is migrated automatically on startup (it no longer appears in Settings UI).
-
-Settings can be changed in **Code > Settings > Extensions** under the **BHL** section.
+Full descriptions for each setting are shown in Settings UI under the **BHL** section.
