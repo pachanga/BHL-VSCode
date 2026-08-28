@@ -7,6 +7,7 @@ import {
   commands,
   window,
   ExtensionContext,
+  FileSystemWatcher,
   ProgressLocation,
   QuickPickItem,
   QuickPickItemKind,
@@ -35,6 +36,8 @@ import {
 
 let client: LanguageClient | undefined;
 let statusBarItem: StatusBarItem;
+let fileWatcher: FileSystemWatcher | undefined;
+let restartInFlight: Promise<void> = Promise.resolve();
 
 function statusBarLabel(context: ExtensionContext): string {
   const config = workspace.getConfiguration('bhl');
@@ -90,12 +93,30 @@ async function pickProjectFile(): Promise<string | undefined> {
 }
 
 
-async function startOrRestartClient(context: ExtensionContext, projFile: string | undefined): Promise<void> {
+/**
+ * Stops the current client (if any) and starts a new one, fully awaiting both steps and
+ * surfacing any start failure to the user. Calls are serialized through `restartInFlight` —
+ * without that, two overlapping restarts (e.g. a quick retry after a failure, or install/remove
+ * racing a manual "BHL: Restart LSP Client") could both be mid-flight at once, briefly leaving
+ * two clients/server processes alive against the same open documents.
+ */
+function startOrRestartClient(context: ExtensionContext, projFile: string | undefined): Promise<void> {
+  restartInFlight = restartInFlight.then(() => doStartOrRestartClient(context, projFile));
+  return restartInFlight;
+}
+
+async function doStartOrRestartClient(context: ExtensionContext, projFile: string | undefined): Promise<void> {
   if (client) {
     await client.stop();
+    client = undefined;
   }
-  client = startClient(context, projFile);
-  updateStatusBarItem(context);
+  try {
+    client = await startClient(context, projFile);
+  } catch (err: any) {
+    window.showErrorMessage(`BHL Language Server failed to start: ${err.message ?? err}`);
+  } finally {
+    updateStatusBarItem(context);
+  }
 }
 
 /**
@@ -112,7 +133,7 @@ async function refreshClientIfRunning(context: ExtensionContext, projFile: strin
   }
 }
 
-function startClient(context: ExtensionContext, projFile: string | undefined): LanguageClient {
+async function startClient(context: ExtensionContext, projFile: string | undefined): Promise<LanguageClient> {
   const config = workspace.getConfiguration('bhl');
 
   const useCustomInstallation = config.get<boolean>('useCustomInstallation') ?? false;
@@ -146,16 +167,23 @@ function startClient(context: ExtensionContext, projFile: string | undefined): L
     },
   };
 
+  // Replace rather than accumulate: each restart previously created a fresh watcher via
+  // workspace.createFileSystemWatcher without ever disposing the last one (only the
+  // LanguageClient itself was tracked), leaking one live watcher per restart.
+  fileWatcher?.dispose();
+  fileWatcher = workspace.createFileSystemWatcher('**/*.bhl');
+  context.subscriptions.push(fileWatcher);
+
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'bhl' }],
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/*.bhl'),
+      fileEvents: fileWatcher,
     },
   };
 
   const newClient = new LanguageClient('bhl', 'BHL Language Server', serverOptions, clientOptions);
   context.subscriptions.push(newClient);
-  newClient.start();
+  await newClient.start();
   return newClient;
 }
 
@@ -181,9 +209,6 @@ export async function activate(context: ExtensionContext) {
   await migrateLegacyExecutablePathSetting();
 
   const projFile = await findProjectFile();
-  if (projFile !== undefined) {
-    client = startClient(context, projFile);
-  }
   activateDebug(context);
 
   const installsRoot = path.join(context.globalStorageUri.fsPath, 'lsp-releases');
@@ -193,8 +218,13 @@ export async function activate(context: ExtensionContext) {
   statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100);
   statusBarItem.command = 'bhl.manageLspVersions';
   statusBarItem.tooltip = 'Manage BHL LSP versions';
-  updateStatusBarItem(context);
   statusBarItem.show();
+
+  if (projFile !== undefined) {
+    await restartClient();
+  } else {
+    updateStatusBarItem(context);
+  }
 
   context.subscriptions.push(
     statusBarItem,
