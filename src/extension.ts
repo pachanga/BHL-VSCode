@@ -220,11 +220,7 @@ export async function activate(context: ExtensionContext) {
   statusBarItem.tooltip = 'Manage BHL LSP versions';
   statusBarItem.show();
 
-  if (projFile !== undefined) {
-    await restartClient();
-  } else {
-    updateStatusBarItem(context);
-  }
+  updateStatusBarItem(context);
 
   context.subscriptions.push(
     statusBarItem,
@@ -327,6 +323,14 @@ export async function activate(context: ExtensionContext) {
       }
     })
   );
+
+  // Kick off the client start without awaiting it: activate() must resolve promptly, since VS
+  // Code won't dispatch a command invocation (e.g. clicking the status bar item, or running
+  // "BHL: Manage LSP Versions") until this promise settles. Awaiting a slow-to-start or hanging
+  // LSP server here would make every command appear completely unresponsive until it does.
+  if (projFile !== undefined) {
+    restartClient();
+  }
 }
 
 export function deactivate(): Thenable<void> | undefined {

@@ -92,6 +92,26 @@ class DAPProxy implements vscode.DebugAdapter {
   dispose(): void { this._socket.destroy(); }
 }
 
+/**
+ * Without this, "BHL Debug" only shows up in the Run and Debug dropdown once a launch.json
+ * already contains a bhl configuration (e.g. added via the "Add Configuration..." snippet
+ * picker). Providing configs dynamically here makes it selectable straight away, even in a
+ * workspace with no launch.json at all.
+ */
+class BHLDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+  provideDebugConfigurations(): vscode.ProviderResult<vscode.DebugConfiguration[]> {
+    return [
+      {
+        type: 'bhl',
+        request: 'attach',
+        name: 'Attach to BHL (Unity)',
+        host: DEFAULT_HOST,
+        port: DEFAULT_PORT,
+      },
+    ];
+  }
+}
+
 class BHLDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
   async createDebugAdapterDescriptor(session: vscode.DebugSession): Promise<vscode.DebugAdapterDescriptor> {
     const host: string = session.configuration.host || DEFAULT_HOST;
@@ -139,6 +159,14 @@ export function activateDebug(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory('bhl', new BHLDebugAdapterDescriptorFactory())
+  );
+
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider(
+      'bhl',
+      new BHLDebugConfigurationProvider(),
+      vscode.DebugConfigurationProviderTriggerKind.Dynamic
+    )
   );
 
   context.subscriptions.push(

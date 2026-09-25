@@ -2,7 +2,7 @@
   "name": "bhl",
   "displayName": "BHL",
   "publisher": "vscodebhl",
-  "version": "0.9.2",
+  "version": "0.9.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/bitdotgames/BHL"
@@ -17,6 +17,7 @@
   "activationEvents": [
     "onLanguage:bhl",
     "onDebugResolve:bhl",
+    "onDebugDynamicConfigurations:bhl",
     "onCommand:bhl.selectProjectFile",
     "onCommand:bhl.reload",
     "onCommand:bhl.restartLanguageClient",
@@ -60,15 +61,6 @@
             }
           }
         },
-        "initialConfigurations": [
-          {
-            "type": "bhl",
-            "request": "attach",
-            "name": "Attach to BHL (Unity)",
-            "host": "localhost",
-            "port": 7777
-          }
-        ],
         "configurationSnippets": [
           {
             "label": "BHL Debug: Attach",
