@@ -70,16 +70,38 @@ function updateStatusBarItem(context: ExtensionContext): void {
   selfHealDownloadedReleaseVersionSetting(context);
 }
 
+/**
+ * Walks upward from `startDir` looking for a bhl.proj, stopping at the filesystem root.
+ */
+function findProjectFileUpwards(startDir: string): string | undefined {
+  let dir = startDir;
+  for (;;) {
+    const candidate = path.join(dir, 'bhl.proj');
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
+
 async function findProjectFile(): Promise<string | undefined> {
   const files = await workspace.findFiles('**/bhl.proj');
-  if (files.length === 0) return undefined;
   if (files.length === 1) return files[0].fsPath;
-  const items = files.map(f => ({ label: workspace.asRelativePath(f), fsPath: f.fsPath }));
-  const picked = await window.showQuickPick(items, {
-    title: 'Select BHL Project',
-    placeHolder: 'Multiple bhl.proj files found',
-  });
-  return picked?.fsPath;
+  if (files.length > 1) {
+    const items = files.map(f => ({ label: workspace.asRelativePath(f), fsPath: f.fsPath }));
+    const picked = await window.showQuickPick(items, {
+      title: 'Select BHL Project',
+      placeHolder: 'Multiple bhl.proj files found',
+    });
+    return picked?.fsPath;
+  }
+
+  // No bhl.proj found via a workspace search — most commonly because there's no workspace
+  // folder open at all (a lone .bhl file opened via "Open File..."), so there's nothing for
+  // findFiles to search under. Fall back to walking up from whatever .bhl file is open on disk.
+  const openBhlFile = workspace.textDocuments.find(d => d.languageId === 'bhl' && d.uri.scheme === 'file');
+  if (!openBhlFile) return undefined;
+  return findProjectFileUpwards(path.dirname(openBhlFile.uri.fsPath));
 }
 
 async function pickProjectFile(): Promise<string | undefined> {
