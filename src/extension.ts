@@ -96,9 +96,7 @@ async function findProjectFile(): Promise<string | undefined> {
     return picked?.fsPath;
   }
 
-  // No bhl.proj found via a workspace search — most commonly because there's no workspace
-  // folder open at all (a lone .bhl file opened via "Open File..."), so there's nothing for
-  // findFiles to search under. Fall back to walking up from whatever .bhl file is open on disk.
+  // No workspace folder open (e.g. a lone .bhl file) — walk up from the open file instead.
   const openBhlFile = workspace.textDocuments.find(d => d.languageId === 'bhl' && d.uri.scheme === 'file');
   if (!openBhlFile) return undefined;
   return findProjectFileUpwards(path.dirname(openBhlFile.uri.fsPath));
@@ -196,11 +194,9 @@ async function startClient(context: ExtensionContext, projFile: string | undefin
   fileWatcher = workspace.createFileSystemWatcher('**/*.bhl');
   context.subscriptions.push(fileWatcher);
 
-  // Pin the server's project root to the bhl.proj directory explicitly, rather than letting
-  // vscode-languageclient derive it from the open VS Code workspace. Left to its own devices it
-  // either sends no rootUri/workspaceFolders at all (opening a lone .bhl file with no folder —
-  // the server then reports "0 file(s) indexed") or sends the first open workspace folder, which
-  // may not even be the directory bhl.proj lives in.
+  // Pin the root to bhl.proj's directory — left to its own devices, vscode-languageclient
+  // sends no rootUri at all with no workspace folder open ("0 file(s) indexed"), or the
+  // wrong one if the open folder is just a parent of bhl.proj.
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'bhl' }],
     synchronize: {
@@ -240,11 +236,9 @@ export async function activate(context: ExtensionContext) {
 
   const projFile = await findProjectFile();
 
-  // Found bhl.proj only by walking up from a lone open file, with no workspace folder open at
-  // all (e.g. opened via a macOS file association) — opening its directory as the workspace
-  // folder gets us a normal project-backed window (working file watchers, diagnostics, etc.)
-  // instead of running the LSP against a single unparented file with a synthetic pinned root.
-  // This replaces the current window, so there's no point continuing this activate() call.
+  // bhl.proj found only by walking up from a lone open file (no workspace folder at all, e.g.
+  // a macOS file association) — open its directory as a real workspace folder instead of
+  // running against a single unparented file. This replaces the window, so stop here.
   if (projFile !== undefined && workspace.workspaceFolders === undefined) {
     await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(projFile)));
     return;
@@ -365,10 +359,8 @@ export async function activate(context: ExtensionContext) {
     })
   );
 
-  // Kick off the client start without awaiting it: activate() must resolve promptly, since VS
-  // Code won't dispatch a command invocation (e.g. clicking the status bar item, or running
-  // "BHL: Manage LSP Versions") until this promise settles. Awaiting a slow-to-start or hanging
-  // LSP server here would make every command appear completely unresponsive until it does.
+  // Don't await: commands aren't dispatchable until activate() resolves, so a slow/hanging
+  // LSP start here would make every command (e.g. "BHL: Manage LSP Versions") look dead.
   if (projFile !== undefined) {
     restartClient();
   }

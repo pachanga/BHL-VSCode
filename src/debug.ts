@@ -92,12 +92,7 @@ class DAPProxy implements vscode.DebugAdapter {
   dispose(): void { this._socket.destroy(); }
 }
 
-/**
- * Without this, "BHL Debug" only shows up in the Run and Debug dropdown once a launch.json
- * already contains a bhl configuration (e.g. added via the "Add Configuration..." snippet
- * picker). Providing configs dynamically here makes it selectable straight away, even in a
- * workspace with no launch.json at all.
- */
+// Lets "BHL Debug" be selectable in Run and Debug without an existing launch.json.
 class BHLDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
   provideDebugConfigurations(): vscode.ProviderResult<vscode.DebugConfiguration[]> {
     return [
