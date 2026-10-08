@@ -239,6 +239,17 @@ export async function activate(context: ExtensionContext) {
   await migrateLegacyExecutablePathSetting();
 
   const projFile = await findProjectFile();
+
+  // Found bhl.proj only by walking up from a lone open file, with no workspace folder open at
+  // all (e.g. opened via a macOS file association) — opening its directory as the workspace
+  // folder gets us a normal project-backed window (working file watchers, diagnostics, etc.)
+  // instead of running the LSP against a single unparented file with a synthetic pinned root.
+  // This replaces the current window, so there's no point continuing this activate() call.
+  if (projFile !== undefined && workspace.workspaceFolders === undefined) {
+    await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(projFile)));
+    return;
+  }
+
   activateDebug(context);
 
   const installsRoot = path.join(context.globalStorageUri.fsPath, 'lsp-releases');
