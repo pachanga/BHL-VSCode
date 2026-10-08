@@ -235,15 +235,6 @@ export async function activate(context: ExtensionContext) {
   await migrateLegacyExecutablePathSetting();
 
   const projFile = await findProjectFile();
-
-  // bhl.proj found only by walking up from a lone open file (no workspace folder at all, e.g.
-  // a macOS file association) — open its directory as a real workspace folder instead of
-  // running against a single unparented file. This replaces the window, so stop here.
-  if (projFile !== undefined && workspace.workspaceFolders === undefined) {
-    await commands.executeCommand('vscode.openFolder', Uri.file(path.dirname(projFile)));
-    return;
-  }
-
   activateDebug(context);
 
   const installsRoot = path.join(context.globalStorageUri.fsPath, 'lsp-releases');
