@@ -196,11 +196,19 @@ async function startClient(context: ExtensionContext, projFile: string | undefin
   fileWatcher = workspace.createFileSystemWatcher('**/*.bhl');
   context.subscriptions.push(fileWatcher);
 
+  // Pin the server's project root to the bhl.proj directory explicitly, rather than letting
+  // vscode-languageclient derive it from the open VS Code workspace. Left to its own devices it
+  // either sends no rootUri/workspaceFolders at all (opening a lone .bhl file with no folder —
+  // the server then reports "0 file(s) indexed") or sends the first open workspace folder, which
+  // may not even be the directory bhl.proj lives in.
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'bhl' }],
     synchronize: {
       fileEvents: fileWatcher,
     },
+    ...(projFile
+      ? { workspaceFolder: { uri: Uri.file(path.dirname(projFile)), name: path.basename(path.dirname(projFile)), index: 0 } }
+      : {}),
   };
 
   const newClient = new LanguageClient('bhl', 'BHL Language Server', serverOptions, clientOptions);
